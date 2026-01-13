@@ -5,5 +5,5 @@ SHM: Universal Billing with external actions
 
 ## Документация
 
-https://docs.myshm.ru
+https://docs.vbios.ru
 
