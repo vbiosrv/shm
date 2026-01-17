@@ -11,7 +11,7 @@ on:
       tag_name:
         description: 'Тег релиза'
         required: true
-        default: '1.0.0'
+        default: 'v1.0.0'
       release_name:
         description: 'Название релиза'
         required: true
@@ -92,8 +92,6 @@ jobs:
 
           # Ограничиваем количество коммитов (последние 100)
           if [ -n "$COMMITS" ]; then
-            # Исключаем строки, начинающиеся на 'Merge pull request'
-            COMMITS=$(echo "$COMMITS" | grep -v '^• Merge pull request')
             COMMITS=$(echo "$COMMITS" | head -100)
             COMMITS_SECTION="$COMMITS"
           else
@@ -111,7 +109,6 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_THREAD_ID: ${{ secrets.TELEGRAM_THREAD_ID }}
         run: |
           if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
             echo "❌ Секрет TELEGRAM_BOT_TOKEN не найден"
@@ -134,8 +131,7 @@ jobs:
             -d "{
               \"chat_id\": \"${TELEGRAM_CHAT_ID}\",
               \"text\": \"${MESSAGE}\",
-              \"disable_notification\": true,
-              \"disable_web_page_preview\": true
+              \"disable_web_page_preview\": false
             }")
 
           # Проверка успешной отправки сообщения
