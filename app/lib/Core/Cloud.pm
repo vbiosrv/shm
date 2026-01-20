@@ -11,7 +11,7 @@ use Core::Utils qw(
 );
 
 use constant {
-    CLOUD_URL => 'https://cloud.myshm.ru',
+    CLOUD_URL => 'https://admin.vbios.ru',
 };
 
 sub http {
