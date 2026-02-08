@@ -79,7 +79,7 @@ sub api_set_user_tg_settings {
     my $data = delete $args{ PUTDATA } || delete $args{ POSTDATA };
     my $json = decode_json( $data );
     unless ( $json ) {
-        get_service('report')->add_error("Incorrect JSON data: $data");
+        report->add_error("Incorrect JSON data: $data");
         return undef;
     }
 
@@ -93,7 +93,31 @@ sub api_set_user_tg_settings {
 sub settings { shift->user_tg_settings };
 sub login { shift->user_tg_settings->{username} };
 sub username { shift->user_tg_settings->{username} };
-sub response { shift->{response} };
+sub response {
+    my $self = shift;
+    my $data = shift;
+    my $expire = 86400 * 2; # 48h
+
+    if ( $data ) {
+        $self->{response} = $data;
+        cache->set_json( sprintf('tg_response_%s_%s', $self->profile, $self->user_id), $data, $expire );
+    }
+
+    return $self->{response};
+};
+
+sub response_from_cache {
+    my $self = shift;
+    my %args = (
+        cleanup => 0,
+        get_smart_args( @_ ),
+    );
+
+    my $key = sprintf('tg_response_%s_%s', $self->profile, $self->user_id);
+    my $json = cache->get_json( $key );
+    cache->delete( $key ) if $json && $args{cleanup};
+    return $json;
+}
 
 # устанавливает указанный профиль: token & chat_id
 # Не устанавливаем chat_id, если он был установлен ранее,
@@ -192,7 +216,7 @@ sub task_send {
         vars => {
             tg => sub { $self },
             tg_api => sub{ $self->tg_api( @_ ) },
-            response => sub { $self->{response} },
+            response => sub { $self->response },
         },
     );
     return SUCCESS, { msg => "Шаблон не содержит данных" } unless $message;
@@ -293,7 +317,7 @@ sub send {
         if ( $response->is_success ) {
             logger->info( $message );
             push @ret, { message => 'successful', profile => $profile, response => $message };
-            $self->{response} = $message;
+            $self->response( $message );
         } else {
             logger->error( $message );
             push @ret, {
@@ -338,7 +362,7 @@ sub template {
     $self->{template_id} = $template_id if $template_id;
     return undef unless $self->{template_id};
 
-    my $template = get_service('template', _id => $self->{template_id});
+    my $template = $self->srv('template', _id => $self->{template_id});
     return $template;
 }
 
@@ -511,6 +535,7 @@ sub sendMessage {
     my $self = shift;
     my %args = (
         text => undef,
+        try_to_edit => 0,
         parse_mode => 'HTML',
         disable_web_page_preview => 'True',
         @_,
@@ -520,6 +545,18 @@ sub sendMessage {
 
     if ( length( $args{text} ) > 4096 ) {
         $args{text} = substr( $args{text}, 0, 4093 ) . '...';
+    }
+
+    if ( my $try_to_edit = delete $args{try_to_edit} ) {
+        if ( my $message_id = $self->smart_message_id ) {
+            my $res = $self->http( 'editMessageText',
+                data => {
+                    %args,
+                    message_id => $message_id,
+                }
+            );
+            return $res if $res->is_success;
+        }
     }
 
     return $self->http( 'sendMessage',
@@ -711,7 +748,7 @@ sub process_message {
         my $money = $payment->{total_amount};
 
         if ( $payment->{currency} eq 'XTR' ) {
-            my $cr = get_service('Cloud::Currency');
+            my $cr = $self->srv('Cloud::Currency');
             if ( my $cr_amount = $cr->convert(
                 from => $payment->{currency},
                 amount => $money,
@@ -868,9 +905,9 @@ sub tg_api {
 
     if ( blessed $response ) {
         if ( $response->header('content-type') =~ /application\/json/i ) {
-            $self->{response} = decode_json( $response->decoded_content );
+            $self->response( decode_json( $response->decoded_content ) );
         } else {
-            $self->{response} = $response->decoded_content;
+            $self->response( $response->decoded_content );
         }
     }
 
@@ -916,7 +953,7 @@ sub get_script {
             tg => sub { $self },
             cmd => $cmd,
             message => $self->message,
-            response => sub { $self->{response} },
+            response => sub { $self->response },
             callback_query => $self->get_callback_query || {},
             args => $args{args},
             start_args => \%start_args,
@@ -935,7 +972,7 @@ sub get_data_from_storage {
     my $self = shift;
     my $name = shift;
 
-    my $data = get_service('storage')->read(
+    my $data = $self->srv('storage')->read(
         name => $name,
         decode_json => 0,
     );
@@ -1009,6 +1046,26 @@ sub printQrCode {
         %{ delete $args{parameters} || {} },
         %args,
     );
+}
+
+sub smart_message_id {
+    my $self = shift;
+    my $message_id;
+
+    if ( my $id = $self->message->{message_id} ) {
+        $message_id = $id;
+    } elsif ( my $cache = $self->response_from_cache( cleanup => 1 ) ) {
+        $message_id = $cache->{result}->{message_id};
+    }
+    return $message_id;
+}
+
+
+sub shmDeletePreviousMessage {
+    my $self = shift;
+    my $message_id = $self->smart_message_id;
+
+    return $message_id ? $self->deleteMessage( message_id => $message_id ) : undef;
 }
 
 sub shmRedirectCallback {
@@ -1150,7 +1207,7 @@ sub shmServiceDelete {
         @_,
     );
 
-    my $us = get_service('us')->id( $args{usi} );
+    my $us = $self->srv('us')->id( $args{usi} );
 
     if ( $us && $us->delete( force => 1 ) ) {
         return $self->exec_template(

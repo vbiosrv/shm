@@ -102,34 +102,34 @@ sub parse {
     }
 
     my $vars = {
-        user => sub { get_service('user', defined $_[0] ? (_id => $_[0]) : () ) },
-        us => sub { get_service('us', _id => $args{usi} || $_[0] ) },
+        user => sub { $self->srv('user', defined $_[0] ? (_id => $_[0]) : () ) },
+        us => sub { $self->srv('us', _id => $args{usi} || $_[0] ) },
         $task ? ( task => $task ) : (),
-        server => sub { get_service('server', _id => $args{server_id} || $_[0] ) },
-        servers => sub { get_service('server') },
-        sg => sub { get_service('ServerGroups', defined $_[0] ? (_id => $_[0]) : () ) },
-        pay => sub { get_service('pay', _id => $pay_id || $_[0] ) },
-        bonus => sub { get_service('bonus', _id => $bonus_id || $_[0] ) },
-        wd => sub { get_service('withdraw', defined $_[0] ? (_id => $_[0]) : () ) },
-        config => sub { get_service('config')->data_by_name },
+        server => sub { $self->srv('server', _id => $args{server_id} || $_[0] ) },
+        servers => sub { $self->srv('server') },
+        sg => sub { $self->srv('ServerGroups', defined $_[0] ? (_id => $_[0]) : () ) },
+        pay => sub { $self->srv('pay', _id => $pay_id || $_[0] ) },
+        bonus => sub { $self->srv('bonus', _id => $bonus_id || $_[0] ) },
+        wd => sub { $self->srv('withdraw', defined $_[0] ? (_id => $_[0]) : () ) },
+        config => sub { $self->srv('config')->data_by_name },
         tpl => $self,
-        service => sub { get_service('service', defined $_[0] ? (_id => $_[0]) : () ) },
-        services => sub { get_service('service') },
-        storage => sub { get_service('storage', defined $_[0] ? (_id => $_[0]) : () ) },
-        telegram => sub { get_service('Transport::Telegram', task => $task) },
+        service => sub { $self->srv('service', defined $_[0] ? (_id => $_[0]) : () ) },
+        services => sub { $self->srv('service') },
+        storage => sub { $self->srv('storage', defined $_[0] ? (_id => $_[0]) : () ) },
+        telegram => sub { $self->srv('Transport::Telegram', task => $task) },
         tg_api => sub { encode_json_perl( shift, pretty => 1 ) }, # for testing templates
         response => { test_data => 1 },  # for testing templates
-        http => sub { get_service('Transport::Http') },
-        ssh => sub { get_service('Transport::Ssh') },
-        mail => sub { get_service('Transport::Mail') },
-        s3 => sub { get_service('S3') },
-        spool => sub { get_service('Spool', $task_id ? (task_id => $task_id) : (), defined $_[0] ? (_id => $_[0]) : () ) },
-        promo => sub { get_service('promo', defined $_[0] ? (_id => $_[0]) : () ) },
-        misc => sub { get_service('misc') },
-        logger => sub { get_service('logger') },
-        report => sub { get_service('report') },
-        cache => sub { get_service('Core::System::Cache') },
-        currency => sub { get_service('Cloud::Currency') },
+        http => sub { $self->srv('Transport::Http') },
+        ssh => sub { $self->srv('Transport::Ssh') },
+        mail => sub { $self->srv('Transport::Mail') },
+        s3 => sub { $self->srv('S3') },
+        spool => sub { $self->srv('Spool', $task_id ? (task_id => $task_id) : (), defined $_[0] ? (_id => $_[0]) : () ) },
+        promo => sub { $self->srv('promo', defined $_[0] ? (_id => $_[0]) : () ) },
+        misc => sub { $self->srv('misc') },
+        logger => sub { $self->srv('logger') },
+        report => sub { $self->srv('report') },
+        cache => sub { $self->srv('Core::System::Cache') },
+        currency => sub { $self->srv('Cloud::Currency') },
         $args{event_name} ? ( event_name => uc $args{event_name} ) : (),
         %{ $args{vars} }, # do not move it upper. It allows to override promo end others
         request => sub {
@@ -207,7 +207,7 @@ sub parse {
     unless ($template->process( \$data, $vars, \$result )) {
         my $err = "Template render error: " . $template->error();
         logger->error( $err );
-        get_service('report')->add_error( $err );
+        report->add_error( $err );
 
         if ( $task && blessed( $task ) ) {
             $task->answer(
@@ -235,7 +235,7 @@ sub show {
 
     unless ( $template ) {
         logger->warning("Template not found");
-        get_service('report')->add_error('Template not found');
+        report->add_error('Template not found');
         return undef;
     }
 
@@ -256,13 +256,13 @@ sub show_public {
     my $template = $self->id( $args{id} );
     unless ( $template ) {
         logger->warning("Template not found");
-        get_service('report')->add_error('Template not found');
+        report->add_error('Template not found');
         return undef;
     }
 
     unless ( $template->get_settings->{allow_public} ) {
         logger->warning("Template not public");
-        get_service('report')->add_error('Permission denied: template is not public');
+        report->add_error('Permission denied: template is not public');
         return undef;
     }
 
@@ -291,7 +291,7 @@ sub read_template_from_file {
     my $file = sprintf("%s/%s.tpl", $dir, shift );
     my $data = read_file( $file );
     if ( ref $data ) {
-        get_service('report')->error( $file, $data->{error} );
+        report->error( $file, $data->{error} );
         return undef;
     }
 
@@ -303,7 +303,7 @@ sub read_settings_from_file {
     my $file = sprintf("%s/%s.tpls", $dir, shift );
     my $data = read_file( $file );
     if ( ref $data ) {
-        get_service('report')->error( $file, $data->{error} ) if -f $file;
+        report->error( $file, $data->{error} ) if -f $file;
         return;
     }
 
@@ -318,7 +318,7 @@ sub write_template_to_file {
     my $settings = shift;
     my $ret = write_file( $file, $data );
     if ( ref $ret ) {
-        get_service('report')->error( $file, $ret->{error} );
+        report->error( $file, $ret->{error} );
         return;
     }
 
@@ -327,7 +327,7 @@ sub write_template_to_file {
         my $file = sprintf("%s/%s.tpls", $dir, $template );
         my $ret = write_file( $file, $json );
         if ( ref $ret ) {
-            get_service('report')->error( $file, $ret->{error} );
+            report->error( $file, $ret->{error} );
             return;
         }
     }
