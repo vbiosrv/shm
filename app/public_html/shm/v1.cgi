@@ -308,6 +308,15 @@ my $routes = {
         swagger => { summary => 'Остановить услугу пользователя' },
     },
 },
+'/user/service/change' => {
+    swagger => { tags => 'Услуги пользователей' },
+    POST => {
+        controller => 'USObject',
+        method => 'change',
+        required => ['user_service_id','service_id'],
+        swagger => { summary => 'Сменить тариф' },
+    },
+},
 '/user/withdraw' => {
     swagger => { tags => 'Пользователи' },
     GET => {
@@ -917,6 +926,14 @@ my $routes = {
         controller => 'Spool',
         required => ['id'],
         swagger => { summary => 'Удалить задачу' },
+    },
+},
+'/admin/spool/statuses' => {
+    swagger => { tags => 'Задачи' },
+    GET => {
+        controller => 'Spool',
+        method => 'statuses',
+        swagger => { summary => 'Статусы задач' },
     },
 },
 '/admin/spool/history' => {

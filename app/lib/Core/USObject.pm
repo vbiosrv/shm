@@ -206,6 +206,8 @@ sub delete {
     return scalar $self->get;
 }
 
+sub delete_force { shift->delete( force => 1 ) };
+
 sub has_expired {
     my $self = shift;
 
@@ -542,8 +544,13 @@ sub last_event {
 
 sub api_spool_commands {
     my $self = shift;
+    my %args = (
+        user_id => undef,
+        user_service_id => $self->id,
+        @_,
+    );
 
-    my @arr = $self->spool->list_by_settings( user_service_id => $self->id );
+    my @arr = $self->spool->list_by_settings( user_service_id => $args{user_service_id} );
     return @arr;
 }
 
