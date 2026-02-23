@@ -16,7 +16,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: danuk/shm
+  IMAGE_NAME: danuk/vbios
 
 jobs:
   build-base:
