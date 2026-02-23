@@ -81,8 +81,8 @@ jobs:
           target: api
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/shm-api:${{ steps.version.outputs.minor }}
-            ${{ steps.version.outputs.push_latest == 'true' && format('{0}/shm-api:latest', secrets.DOCKERHUB_USERNAME) || format('{0}/shm-api:skip-latest-{1}', secrets.DOCKERHUB_USERNAME, steps.version.outputs.rev) }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/vbios-api:${{ steps.version.outputs.minor }}
+            ${{ steps.version.outputs.push_latest == 'true' && format('{0}/vbios-api:latest', secrets.DOCKERHUB_USERNAME) || format('{0}/shm-api:skip-latest-{1}', secrets.DOCKERHUB_USERNAME, steps.version.outputs.rev) }}
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
 
@@ -94,7 +94,7 @@ jobs:
           target: core
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/shm-core:${{ steps.version.outputs.minor }}
-            ${{ steps.version.outputs.push_latest == 'true' && format('{0}/shm-core:latest', secrets.DOCKERHUB_USERNAME) || format('{0}/shm-core:skip-latest-{1}', secrets.DOCKERHUB_USERNAME, steps.version.outputs.rev) }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/vbios-core:${{ steps.version.outputs.minor }}
+            ${{ steps.version.outputs.push_latest == 'true' && format('{0}/vbios-core:latest', secrets.DOCKERHUB_USERNAME) || format('{0}/shm-core:skip-latest-{1}', secrets.DOCKERHUB_USERNAME, steps.version.outputs.rev) }}
           cache-from: type=gha,scope=core
           cache-to: type=gha,mode=max,scope=core
